@@ -1,6 +1,6 @@
 import numpy as np
 
-class KNearestNeighbor(object):
+class KNearestNeighbor:
   """ a kNN classifier with L2 distance """
 
   def __init__(self):
@@ -11,11 +11,9 @@ class KNearestNeighbor(object):
     Train the classifier. For k-nearest neighbors this is just 
     memorizing the training data.
 
-    Inputs:
-    - X: A numpy array of shape (num_train, D) containing the training data
-      consisting of num_train samples each of dimension D.
-    - y: A numpy array of shape (N,) containing the training labels, where
-         y[i] is the label for X[i].
+    Input:
+    X - A num_train x dimension array where each row is a training point.
+    y - A vector of length num_train, where y[i] is the label for X[i, :]
     """
     self.X_train = X
     self.y_train = y
@@ -24,16 +22,15 @@ class KNearestNeighbor(object):
     """
     Predict labels for test data using this classifier.
 
-    Inputs:
-    - X: A numpy array of shape (num_test, D) containing test data consisting
-         of num_test samples each of dimension D.
-    - k: The number of nearest neighbors that vote for the predicted labels.
-    - num_loops: Determines which implementation to use to compute distances
-      between training points and testing points.
+    Input:
+    X - A num_test x dimension array where each row is a test point.
+    k - The number of nearest neighbors that vote for predicted label
+    num_loops - Determines which method to use to compute distances
+                between training points and test points.
 
-    Returns:
-    - y: A numpy array of shape (num_test,) containing predicted labels for the
-      test data, where y[i] is the predicted label for the test point X[i].  
+    Output:
+    y - A vector of length num_test, where y[i] is the predicted label for the
+        test point X[i, :].
     """
     if num_loops == 0:
       dists = self.compute_distances_no_loops(X)
@@ -52,13 +49,12 @@ class KNearestNeighbor(object):
     in self.X_train using a nested loop over both the training data and the 
     test data.
 
-    Inputs:
-    - X: A numpy array of shape (num_test, D) containing test data.
+    Input:
+    X - An num_test x dimension array where each row is a test point.
 
-    Returns:
-    - dists: A numpy array of shape (num_test, num_train) where dists[i, j]
-      is the Euclidean distance between the ith test point and the jth training
-      point.
+    Output:
+    dists - A num_test x num_train array where dists[i, j] is the distance
+            between the ith test point and the jth training point.
     """
     num_test = X.shape[0]
     num_train = self.X_train.shape[0]
@@ -68,10 +64,10 @@ class KNearestNeighbor(object):
         #####################################################################
         # TODO:                                                             #
         # Compute the l2 distance between the ith test point and the jth    #
-        # training point, and store the result in dists[i, j]. You should   #
-        # not use a loop over dimension.                                    #
+        # training point, and store the result in dists[i, j]               #
         #####################################################################
-        pass
+        
+        dists[i, j] = np.sqrt( np.sum( np.square( X[i, :] - self.X_train[j, :] )  ) )
         #####################################################################
         #                       END OF YOUR CODE                            #
         #####################################################################
@@ -93,7 +89,9 @@ class KNearestNeighbor(object):
       # Compute the l2 distance between the ith test point and all training #
       # points, and store the result in dists[i, :].                        #
       #######################################################################
-      pass
+      t = X[i,:] - self.X_train
+      k = np.sum(np.multiply(t,t),axis=1)
+      dists[i,:] = np.sqrt(k)
       #######################################################################
       #                         END OF YOUR CODE                            #
       #######################################################################
@@ -114,14 +112,18 @@ class KNearestNeighbor(object):
     # Compute the l2 distance between all test points and all training      #
     # points without using any explicit loops, and store the result in      #
     # dists.                                                                #
-    #                                                                       #
-    # You should implement this function using only basic array operations; #
-    # in particular you should not use functions from scipy.                #
-    #                                                                       #
     # HINT: Try to formulate the l2 distance using matrix multiplication    #
     #       and two broadcast sums.                                         #
     #########################################################################
-    pass
+    
+    x1x22 = 2 * np.dot( X, np.transpose( self.X_train ) )
+    x1_2 = np.sum(np.multiply(X,X),axis=1)
+    x2_2 = np.sum( np.multiply( self.X_train, self.X_train ), axis=1 )
+
+    x1_2 = x1_2[...,np.newaxis]
+    x2_2 = x2_2[np.newaxis,...]
+    dists = np.sqrt(x1_2 -  x1x22 + x2_2)
+
     #########################################################################
     #                         END OF YOUR CODE                              #
     #########################################################################
@@ -132,13 +134,13 @@ class KNearestNeighbor(object):
     Given a matrix of distances between test points and training points,
     predict a label for each test point.
 
-    Inputs:
-    - dists: A numpy array of shape (num_test, num_train) where dists[i, j]
-      gives the distance betwen the ith test point and the jth training point.
+    Input:
+    dists - A num_test x num_train array where dists[i, j] gives the distance
+            between the ith test point and the jth training point.
 
-    Returns:
-    - y: A numpy array of shape (num_test,) containing predicted labels for the
-      test data, where y[i] is the predicted label for the test point X[i].  
+    Output:
+    y - A vector of length num_test where y[i] is the predicted label for the
+        ith test point.
     """
     num_test = dists.shape[0]
     y_pred = np.zeros(num_test)
@@ -149,11 +151,15 @@ class KNearestNeighbor(object):
       #########################################################################
       # TODO:                                                                 #
       # Use the distance matrix to find the k nearest neighbors of the ith    #
-      # testing point, and use self.y_train to find the labels of these       #
+      # training point, and use self.y_train to find the labels of these      #
       # neighbors. Store these labels in closest_y.                           #
       # Hint: Look up the function numpy.argsort.                             #
       #########################################################################
-      pass
+
+      closest_y = np.argsort(dists[i,:])[:k]
+
+      labels = self.y_train[closest_y]
+
       #########################################################################
       # TODO:                                                                 #
       # Now that you have found the labels of the k nearest neighbors, you    #
@@ -161,7 +167,8 @@ class KNearestNeighbor(object):
       # Store this label in y_pred[i]. Break ties by choosing the smaller     #
       # label.                                                                #
       #########################################################################
-      pass
+      y_pred[i] = np.bincount(labels).argmax()
+
       #########################################################################
       #                           END OF YOUR CODE                            # 
       #########################################################################
